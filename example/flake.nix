@@ -2,9 +2,7 @@
   description = "An example NixOS configuration for the 'teapot' host with bpfman.";
 
   inputs = {
-    bpfman = {
-      url = "path:./..";
-    };
+    bpfman.url = "github:frobware/nix-bpfman";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
