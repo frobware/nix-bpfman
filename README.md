@@ -1,16 +1,15 @@
 # A Nix Flake that packages bpfman
 
-This Nix [flake](https://nixos.wiki/wiki/Flakes) packages
-[bpfman](https://bpfman.io) for [NixOS](https://nixos.org).
+This [Nix](https://nix.dev) [flake](https://nix.dev/concepts/flakes)
+packages [bpfman](https://bpfman.io) for [NixOS](https://nixos.org).
 
 With this flake, you can:
 
-- Install bpfman: Easily install the bpfman package on NixOS.
+- Easily install the bpfman package on NixOS.
 
-- Run bpfman as a Service: Use the provided [Nix
-  module](https://nixos.wiki/wiki/NixOS_modules) to customise the
-  installation and configuration of bpfman and run it as a systemd
-  service.
+- Use the provided [Nix module](https://nixos.wiki/wiki/NixOS_modules)
+  to customise the installation and configuration of bpfman and run it
+  as a systemd service.
 
 ## Nix Module Details
 
@@ -38,7 +37,7 @@ based on flakes.
 
 ```nix
 {
-  description = "NixOS configuration for the 'teapot' host with bpfman";
+  description = "NixOS configuration with bpfman";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
