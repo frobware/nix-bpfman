@@ -41,9 +41,24 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       default = pkgs.mkShell {
-        buildInputs = [
-          self.packages.${system}.default.buildInputs
-          self.packages.${system}.default.nativeBuildInputs
+        hardeningDisable = [
+          "stackprotector"
+          # zerocallusedregs: https://github.com/NixOS/nixpkgs/pull/325587
+          "zerocallusedregs"
+        ];
+        inputsFrom = [ self.packages.${system}.default ];
+
+        # These packages are needed to develop and build parts of the
+        # bpfman tree, notably, the examples directory (make build,
+        # generate, et al), libbpf/src.
+        packages = [
+          pkgs.clang
+          pkgs.elfutils
+          pkgs.go_1_22
+          pkgs.libbpf
+          pkgs.pkgsi686Linux.glibc
+          pkgs.protoc-gen-go
+          pkgs.protoc-gen-go-grpc
         ];
         shellHook = ''
           echo "Development environment for bpfman on ${system}."
