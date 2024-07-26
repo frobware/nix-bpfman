@@ -31,14 +31,16 @@ rustPlatform.buildRustPackage rec {
     pkgs.pkg-config     # Helps to discover compiler and linker flags.
   ];
 
-  # Disable test execution. Nix's sandboxing will cause tests that
-  # attempt to pull from the internet at execution time to fail;
-  # bpfman's tests pull from the internet. Nix builds, including
-  # tests, are executed in a highly controlled environment that does
-  # not have network access. This is a deliberate feature to ensure
-  # builds are reproducible and not affected by external changes or
-  # dependencies.
-  doCheck = false;
+  doCheck = true;
+
+  checkPhase = ''
+    # Skip tests that require internet access.
+    cargo test --release -- \
+      --skip oci_utils::image_manager::tests::image_pull_failure \
+      --skip oci_utils::image_manager::tests::image_pull_and_bytecode_verify \
+      --skip oci_utils::image_manager::tests::private_image_pull_and_bytecode_verify \
+      --skip oci_utils::image_manager::tests::image_pull_policy_never_failure
+  '';
 
   # Remove unwanted binaries after the install phase.
   postInstall = ''
