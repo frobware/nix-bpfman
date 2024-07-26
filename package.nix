@@ -50,7 +50,7 @@ rustPlatform.buildRustPackage rec {
 
   meta = with lib; {
     description = "An eBPF Manager for Linux and Kubernetes.";
-    license = licenses.mit;
+    license = with licenses; [asl20 bsd2 gpl2];
     mainProgram = "bpfman";
     maintainers = [ "frobware" ];
     platforms = platforms.linux;
