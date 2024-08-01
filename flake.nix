@@ -39,6 +39,17 @@
 
     devShells = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
+      rust-toolchain = pkgs.symlinkJoin {
+        name = "rust-toolchain";
+        paths = [
+          pkgs.cargo
+          pkgs.clippy
+          pkgs.rust-analyzer
+          pkgs.rustPlatform.rustcSrc
+          pkgs.rustc
+          pkgs.rustfmt
+        ];
+      };
     in {
       default = pkgs.mkShell {
         hardeningDisable = [
@@ -59,6 +70,8 @@
           pkgs.pkgsi686Linux.glibc
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
+
+          rust-toolchain
         ];
         shellHook = ''
           echo "Development environment for bpfman on ${system}."
