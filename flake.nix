@@ -68,6 +68,7 @@
           pkgs.go_1_22
           pkgs.libbpf
           pkgs.pkgsi686Linux.glibc
+          pkgs.protobuf3_23
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
 
