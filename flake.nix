@@ -59,6 +59,10 @@
         ];
         inputsFrom = [ self.packages.${system}.default ];
 
+        # Note: Add to packages for dev tools, buildInputs for runtime
+        # dependencies, and nativeBuildInputs for compile-time
+        # dependencies.
+
         # These packages are needed to develop and build parts of the
         # bpfman tree, notably, the examples directory (make build,
         # generate, et al), libbpf/src.
