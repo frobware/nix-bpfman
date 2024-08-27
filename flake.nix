@@ -39,6 +39,8 @@
 
     devShells = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
+      bpfmanPackage = self.packages.${system}.default;
+
       rust-toolchain = pkgs.symlinkJoin {
         name = "rust-toolchain";
         paths = [
@@ -50,6 +52,9 @@
           pkgs.rustfmt
         ];
       };
+
+      libraries = (bpfmanPackage.buildInputs or []) ++ (bpfmanPackage.propagatedBuildInputs or []);
+      libraryPath = pkgs.lib.makeLibraryPath libraries;
     in {
       default = pkgs.mkShell {
         hardeningDisable = [
@@ -57,7 +62,8 @@
           # zerocallusedregs: https://github.com/NixOS/nixpkgs/pull/325587
           "zerocallusedregs"
         ];
-        inputsFrom = [ self.packages.${system}.default ];
+
+        inputsFrom = [ bpfmanPackage ];
 
         # Note: Add to packages for dev tools, buildInputs for runtime
         # dependencies, and nativeBuildInputs for compile-time
@@ -80,21 +86,14 @@
 
           rust-toolchain
         ];
+
         shellHook = ''
-          echo "Development environment for bpfman on ${system}."
-
           export RUSTC_WRAPPER=${pkgs.sccache}/bin/sccache
-          export SCCACHE_CACHE_SIZE="100G"
+          export SCCACHE_CACHE_SIZE="10G"
           export SCCACHE_DIR="$HOME/.cache/sccache"
-
           mkdir -p ~/.cache/sccache/preprocessor
-
-          # Check if mold setting exists, if not, append it.
-          if ! grep -q "link-arg=-fuse-ld=mold" ~/.cargo/config.toml 2>/dev/null; then
-            mkdir -p ~/.cargo
-            echo "[target.x86_64-unknown-linux-gnu]" >> ~/.cargo/config.toml
-            echo "rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]" >> ~/.cargo/config.toml
-          fi
+          export RUSTFLAGS="-C link-arg=-Wl,-rpath,${libraryPath} -C link-arg=-fuse-ld=mold"
+          echo "Development environment for bpfman on ${system}."
         '';
       };
     });
