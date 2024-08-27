@@ -84,12 +84,16 @@
           echo "Development environment for bpfman on ${system}."
 
           export RUSTC_WRAPPER=${pkgs.sccache}/bin/sccache
+          export SCCACHE_CACHE_SIZE="100G"
+          export SCCACHE_DIR="$HOME/.cache/sccache"
+
+          mkdir -p ~/.cache/sccache/preprocessor
 
           # Check if mold setting exists, if not, append it.
-          if ! grep -q "link-arg=-fuse-ld=mold" .cargo/config.toml 2>/dev/null; then
-            mkdir -p .cargo
-            echo "[target.x86_64-unknown-linux-gnu]" >> .cargo/config.toml
-            echo "rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]" >> .cargo/config.toml
+          if ! grep -q "link-arg=-fuse-ld=mold" ~/.cargo/config.toml 2>/dev/null; then
+            mkdir -p ~/.cargo
+            echo "[target.x86_64-unknown-linux-gnu]" >> ~/.cargo/config.toml
+            echo "rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]" >> ~/.cargo/config.toml
           fi
         '';
       };
