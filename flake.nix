@@ -1,7 +1,7 @@
 {
   description = "A Nix flake & module packaging bpfman, an eBPF Manager for Linux and Kubernetes.";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
 
   outputs = { self, nixpkgs, ... }: let
     forAllSystems = function: nixpkgs.lib.genAttrs ["aarch64-linux" "x86_64-linux"] (
@@ -71,15 +71,26 @@
           pkgs.elfutils
           pkgs.go_1_22
           pkgs.libbpf
+          pkgs.mold
           pkgs.pkgsi686Linux.glibc
           pkgs.protobuf3_23
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
+          pkgs.sccache
 
           rust-toolchain
         ];
         shellHook = ''
           echo "Development environment for bpfman on ${system}."
+
+          export RUSTC_WRAPPER=${pkgs.sccache}/bin/sccache
+
+          # Check if mold setting exists, if not, append it.
+          if ! grep -q "link-arg=-fuse-ld=mold" .cargo/config.toml 2>/dev/null; then
+            mkdir -p .cargo
+            echo "[target.x86_64-unknown-linux-gnu]" >> .cargo/config.toml
+            echo "rustflags = [\"-C\", \"link-arg=-fuse-ld=mold\"]" >> .cargo/config.toml
+          fi
         '';
       };
     });
