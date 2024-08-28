@@ -39,7 +39,6 @@
 
     devShells = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
-      bpfmanPackage = self.packages.${system}.default;
 
       rust-toolchain = pkgs.symlinkJoin {
         name = "rust-toolchain";
@@ -52,9 +51,6 @@
           pkgs.rustfmt
         ];
       };
-
-      libraries = (bpfmanPackage.buildInputs or []) ++ (bpfmanPackage.propagatedBuildInputs or []);
-      libraryPath = pkgs.lib.makeLibraryPath libraries;
     in {
       default = pkgs.mkShell {
         hardeningDisable = [
@@ -63,7 +59,7 @@
           "zerocallusedregs"
         ];
 
-        inputsFrom = [ bpfmanPackage ];
+        inputsFrom = [ self.packages.${system}.default ];
 
         # Note: Add to packages for dev tools, buildInputs for runtime
         # dependencies, and nativeBuildInputs for compile-time
@@ -77,7 +73,7 @@
           pkgs.elfutils
           pkgs.go_1_22
           pkgs.libbpf
-          pkgs.mold
+          pkgs.mold-wrapped
           pkgs.pkgsi686Linux.glibc
           pkgs.protobuf3_23
           pkgs.protoc-gen-go
@@ -92,7 +88,7 @@
           export SCCACHE_CACHE_SIZE="10G"
           export SCCACHE_DIR="$HOME/.cache/sccache"
           mkdir -p ~/.cache/sccache/preprocessor
-          export RUSTFLAGS="-C link-arg=-Wl,-rpath,${libraryPath} -C link-arg=-fuse-ld=mold"
+          export RUSTFLAGS="-C link-arg=-fuse-ld=mold"
           echo "Development environment for bpfman on ${system}."
         '';
       };
