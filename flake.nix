@@ -74,14 +74,13 @@
           pkgs.go_1_22
           pkgs.libbpf
           pkgs.mold-wrapped
-          pkgs.pkgsi686Linux.glibc
           pkgs.protobuf3_23
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
           pkgs.sccache
 
           rust-toolchain
-        ];
+        ] ++ (if system == "x86_64-linux" then [ pkgs.pkgsi686Linux.glibc ] else []);
 
         shellHook = ''
           export RUSTC_WRAPPER=${pkgs.sccache}/bin/sccache
