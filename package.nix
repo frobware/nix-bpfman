@@ -2,16 +2,16 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "bpfman";
-  version = "0.5.0";
+  version = "0.5.5";
 
   src = fetchFromGitHub {
     owner = "bpfman";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-ccMMh1Z7A0Xo7qBXWPhzSXXS4uJ9Td1yW2VlvtGu6qE=";
+    sha256 = "sha256-fu0c2TLUuHTxB50/gBoBgaNXcIgxD+fY+/U9oXTjflA=";
   };
 
-  cargoHash = "sha256-MOuE/zycpsxC8J4L6WWisKb5fogcBRj8ZhOS8ENpqUw=";
+  cargoHash = "sha256-wcK9llfICe6iMVaOZHEHy1o4yW0KSmqWmMZXELLlbm0=";
 
   buildType = bpfmanBuildType;
 

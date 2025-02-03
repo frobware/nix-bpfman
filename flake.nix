@@ -1,7 +1,7 @@
 {
   description = "A Nix flake & module packaging bpfman, an eBPF Manager for Linux and Kubernetes.";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs = { self, nixpkgs, ... }: let
     forAllSystems = function: nixpkgs.lib.genAttrs ["aarch64-linux" "x86_64-linux"] (
