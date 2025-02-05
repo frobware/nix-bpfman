@@ -2,7 +2,7 @@
   description = "A Nix flake & module packaging bpfman, an eBPF Manager for Linux and Kubernetes.";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     systems.url = "github:nix-systems/default";
   };
 
