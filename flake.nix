@@ -1,12 +1,13 @@
 {
   description = "A Nix flake & module packaging bpfman, an eBPF Manager for Linux and Kubernetes.";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    systems.url = "github:nix-systems/default";
+  };
 
-  outputs = { self, nixpkgs, ... }: let
-    forAllSystems = function: nixpkgs.lib.genAttrs ["aarch64-linux" "x86_64-linux"] (
-      system: function system
-    );
+  outputs = { self, nixpkgs, systems, ... }: let
+    forEachSystem = nixpkgs.lib.genAttrs (import systems);
 
     nixpkgsWithOverlays = system: import nixpkgs {
       inherit system;
@@ -20,7 +21,7 @@
       };
     };
   in {
-    apps = forAllSystems (system: let
+    apps = forEachSystem (system: let
       pkgs = nixpkgsWithOverlays system;
     in {
       bpfman = {
@@ -33,11 +34,11 @@
       };
     });
 
-    checks = forAllSystems (system: {
+    checks = forEachSystem (system: {
       build = self.packages.${system}.default;
     });
 
-    devShells = forAllSystems (system: let
+    devShells = forEachSystem (system: let
       pkgs = nixpkgs.legacyPackages.${system};
 
       rust-toolchain = pkgs.symlinkJoin {
@@ -61,13 +62,6 @@
 
         inputsFrom = [ self.packages.${system}.default ];
 
-        # Note: Add to packages for dev tools, buildInputs for runtime
-        # dependencies, and nativeBuildInputs for compile-time
-        # dependencies.
-
-        # These packages are needed to develop and build parts of the
-        # bpfman tree, notably, the examples directory (make build,
-        # generate, et al), libbpf/src.
         packages = [
           pkgs.clang
           pkgs.elfutils
@@ -80,7 +74,7 @@
           pkgs.sccache
 
           rust-toolchain
-        ] ++ (if system == "x86_64-linux" then [ pkgs.pkgsi686Linux.glibc ] else []);
+        ] ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.pkgsi686Linux.glibc ];
 
         shellHook = ''
           export RUSTC_WRAPPER=${pkgs.sccache}/bin/sccache
@@ -103,7 +97,7 @@
       default = bpfmanOverlay;
     };
 
-    packages = forAllSystems (system: let
+    packages = forEachSystem (system: let
       pkgs = nixpkgsWithOverlays system;
     in {
       bpfman = pkgs.bpfman;
