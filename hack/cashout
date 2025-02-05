@@ -4,7 +4,7 @@
 get_build_targets() {
     local current_system
     current_system=$(nix eval --impure --expr builtins.currentSystem --raw)
-    nix flake show --json --no-eval-cache --system "$current_system" | jq --arg system "$current_system" '
+    nix flake show --json --no-eval-cache --system "$current_system" 2>/dev/null | jq --arg system "$current_system" '
         ["checks", "packages", "devShells"] as $tops |
         $tops[] as $top |
         .[$top][$system] |
