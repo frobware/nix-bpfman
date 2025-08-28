@@ -2,16 +2,16 @@
 
 rustPlatform.buildRustPackage rec {
   pname = "bpfman";
-  version = "0.5.5";
+  version = "0.5.6";
 
   src = fetchFromGitHub {
     owner = "bpfman";
     repo = pname;
     rev = "v${version}";
-    sha256 = "sha256-fu0c2TLUuHTxB50/gBoBgaNXcIgxD+fY+/U9oXTjflA=";
+    sha256 = "sha256-mvjrdoReEtHIm3reJBaLdbPy6SJ+BV6v/ECSe77Imxw=";
   };
 
-  cargoHash = "sha256-wcK9llfICe6iMVaOZHEHy1o4yW0KSmqWmMZXELLlbm0=";
+  cargoHash = "sha256-ixHykJtoZ9/utHFdDGdXw22p5y4s5etDETFHLGJVeio=";
 
   buildType = bpfmanBuildType;
 
@@ -28,8 +28,17 @@ rustPlatform.buildRustPackage rec {
   # These tools run on the architecture where the build is taking
   # place.
   nativeBuildInputs = [
-    pkgs.pkg-config     # Helps to discover compiler and linker flags.
+    pkgs.cmake
+    pkgs.llvmPackages.clang
+    pkgs.llvmPackages.libclang.lib
+    pkgs.pkg-config
   ];
+
+  # Set environment variables for build.
+  LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
+  # Disable problematic compiler flags for aws-lc.
+  NIX_CFLAGS_COMPILE = "-Wno-error=stringop-overflow";
 
   doCheck = true;
 

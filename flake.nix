@@ -65,13 +65,18 @@
         packages = [
           pkgs.clang
           pkgs.elfutils
-          pkgs.go_1_22
+          pkgs.go_1_24
           pkgs.libbpf
           pkgs.mold-wrapped
-          pkgs.protobuf3_23
+          pkgs.protobuf_32
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
           pkgs.sccache
+
+          # pkgs.lldb
+          # pkgs.gdb
+
+          pkgs.llvmPackages_latest.lldb  # Provides lldb-vscode
 
           rust-toolchain
         ] ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.pkgsi686Linux.glibc ];
@@ -82,6 +87,15 @@
           export SCCACHE_DIR="$HOME/.cache/sccache"
           mkdir -p ~/.cache/sccache/preprocessor
           export RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+
+          # Reference a target directory that is on local storage - useful when building over NFS.
+          #export CARGO_TARGET_DIR="/tmp/cargo-target-dir-$(basename "$PWD")"
+          #mkdir -p "''$CARGO_TARGET_DIR"
+          #ln -sf "$CARGO_TARGET_DIR" target
+          echo CARGO_TARGET_DIR=$CARGO_TARGET_DIR
+
+          #export RUST_SRC_PATH="${pkgs.rustPlatform.rustLibSrc}";
+          export RUST_SRC_PATH="${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
           echo "Development environment for bpfman on ${system}."
         '';
       };
