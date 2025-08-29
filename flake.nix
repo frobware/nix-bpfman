@@ -7,7 +7,8 @@
   };
 
   outputs = { self, nixpkgs, systems, ... }: let
-    forEachSystem = nixpkgs.lib.genAttrs (import systems);
+    linuxSystems = builtins.filter (s: nixpkgs.lib.hasSuffix "-linux" s) (import systems);
+    forEachSystem = nixpkgs.lib.genAttrs linuxSystems;
 
     nixpkgsWithOverlays = system: import nixpkgs {
       inherit system;
