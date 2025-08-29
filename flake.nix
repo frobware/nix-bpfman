@@ -53,6 +53,21 @@
           pkgs.rustfmt
         ];
       };
+
+      # Script to run make -C examples generate with unwrapped clang
+      # for BPF compilation.
+      bpfman-go-generate-examples = pkgs.writeShellScriptBin "bpfman-go-generate-examples" ''
+        set -euo pipefail
+        export PATH="${pkgs.llvmPackages.clang-unwrapped}/bin:$PATH"
+        CLANG_VERSION=${pkgs.lib.versions.major pkgs.llvmPackages.clang-unwrapped.version}
+        CLANG_INCLUDES="${pkgs.lib.getLib pkgs.llvmPackages.clang-unwrapped}/lib/clang/$CLANG_VERSION/include"
+        export C_INCLUDE_PATH="${pkgs.linuxHeaders}/include:${pkgs.libbpf}/include:${pkgs.glibc.dev}/include:$CLANG_INCLUDES"
+        ${pkgs.lib.optionalString (system == "x86_64-linux") ''
+          export C_INCLUDE_PATH="$C_INCLUDE_PATH:${pkgs.pkgsi686Linux.glibc.dev}/include"
+        ''}
+        echo "Using clang: $(which clang)"
+        make -C examples generate
+      '';
     in {
       default = pkgs.mkShell {
         hardeningDisable = [
@@ -74,6 +89,7 @@
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
           rust-toolchain
+          bpfman-go-generate-examples # wrapper for `make -C examples generate`.
         ] ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.pkgsi686Linux.glibc ];
       };
     });
