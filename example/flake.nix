@@ -1,72 +1,72 @@
 {
-  description = "An example NixOS configuration for the 'teapot' host with bpfman.";
+  description = "NixOS config for host 'teapot' with bpfman and a runnable VM.";
 
   inputs = {
-    bpfman.url = "github:frobware/nix-bpfman";
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    bpfman.url = "..";
+    nixpkgs.follows = "bpfman/nixpkgs";
+    systems.follows = "bpfman/systems";
   };
 
-  outputs = { self, bpfman, nixpkgs, ... }: let
-    supportedSystems = ["aarch64-linux" "x86_64-linux"];
+  outputs = { self, bpfman, nixpkgs, systems, ... }: let
+    linuxSystems = builtins.filter (s: nixpkgs.lib.hasSuffix "-linux" s) (import systems);
+    forEachSystem = nixpkgs.lib.genAttrs linuxSystems;
 
-    forAllSystems = function: nixpkgs.lib.genAttrs supportedSystems (
-      system: function system
-    );
-
-    bpfmanPkgs = system: import nixpkgs {
+    pkgsFor = system: import nixpkgs {
       inherit system;
       overlays = [ bpfman.overlays.default ];
-      nixpkgs.config = {
-        doCheck = false;
-      };
     };
 
-    mkSystem = system: let
-      pkgs = bpfmanPkgs system;
-    in nixpkgs.lib.nixosSystem {
-      inherit system pkgs;
+    mkTeapotSystem = system: nixpkgs.lib.nixosSystem {
+      inherit system;
+      pkgs = pkgsFor system;
       modules = [
         bpfman.nixosModules.bpfman
+
+        ({ ... }: {
+          networking.hostName = "teapot";
+          system.stateVersion = "25.05";
+        })
+
         ({ pkgs, ... }: {
           environment.systemPackages = [ pkgs.bpfman ];
           services.bpfman.service.enable = true;
           services.bpfman.socket.enable = true;
         })
-        ({ ... }: {
-          networking.hostName = "teapot";
-        })
-        ({ ... }: {
-          system.stateVersion = "24.05";
-        })
+
         (import ./vm-minimal.nix)
       ];
     };
+  in
+  {
+    nixosConfigurations = builtins.listToAttrs (map (system: {
+      name = "teapot-${system}";
+      value = mkTeapotSystem system;
+    }) linuxSystems);
 
-    runTeapotVM = system: let
-      pkgs = bpfmanPkgs system;
-    in pkgs.writeShellScriptBin "run-teapot-vm" ''
-      #!${pkgs.runtimeShell} -e
-      QEMU_KERNEL_PARAMS="console=ttyS0" ${self.nixosConfigurations."teapot-${system}".config.system.build.vm}/bin/run-teapot-vm -nographic -m 2G
-    '';
-  in {
-    apps = forAllSystems (system: {
-      default = {
-        type = "app";
-        program = "${runTeapotVM system}/bin/run-teapot-vm";
-      };
+    packages = forEachSystem (system: {
+      default =
+        self.nixosConfigurations."teapot-${system}".config.system.build.vm;
     });
 
-    checks = forAllSystems (system: {
+    checks = forEachSystem (system: {
       build = self.packages.${system}.default;
     });
 
-    nixosConfigurations = builtins.listToAttrs (map (system: {
-      name = "teapot-${system}";
-      value = mkSystem system;
-    }) supportedSystems);
-
-    packages = forAllSystems (system: {
-      default = self.nixosConfigurations."teapot-${system}".config.system.build.vm;
+    # App to run the VM with a sane serial console and memory size.
+    apps = forEachSystem (system: let
+      pkgs = pkgsFor system;
+      vm = self.nixosConfigurations."teapot-${system}".config.system.build.vm;
+      runner = pkgs.writeShellScriptBin "run-teapot-vm" ''
+        #!${pkgs.runtimeShell}
+        set -euo pipefail
+        # Keep logs on the serial console to make debugging easy.
+        QEMU_KERNEL_PARAMS=console=ttyS0 ${vm}/bin/run-teapot-vm -nographic -m 2G
+      '';
+    in {
+      default = {
+        type = "app";
+        program = "${runner}/bin/run-teapot-vm";
+      };
     });
   };
 }
