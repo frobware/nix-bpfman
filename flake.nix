@@ -68,6 +68,11 @@
         echo "Using clang: $(which clang)"
         make -C examples generate
       '';
+
+      # QEMU-based development VM script
+      bpfman-dev-qemu = pkgs.writeShellScriptBin "bpfman-dev-qemu" ''
+        exec ${./scripts/bpfman-dev-qemu.sh} "$@"
+      '';
     in {
       default = pkgs.mkShell {
         hardeningDisable = [
@@ -88,8 +93,13 @@
           pkgs.protobuf_32
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
+          # QEMU and cloud-init dependencies
+          pkgs.qemu_kvm
+          pkgs.cdrkit  # provides genisoimage
+          pkgs.virtiofsd
           rust-toolchain
           bpfman-go-generate-examples # wrapper for `make -C examples generate`.
+          bpfman-dev-qemu  # QEMU development VM
         ] ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.pkgsi686Linux.glibc ];
       };
     });
