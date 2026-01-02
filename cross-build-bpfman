@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# Cross-compile bpfman for non-native architectures.
+#
+# Supported targets:
+#   x86_64-unknown-linux-gnu        (x86_64)
+#   aarch64-unknown-linux-gnu       (ARM64)
+#   powerpc64le-unknown-linux-gnu   (POWER)
+#   s390x-unknown-linux-gnu         (IBM Z)
+#
+# Usage:
+#   ./cross-build-bpfman                                 # ARM64 release
+#   ./cross-build-bpfman x86_64-unknown-linux-gnu        # x86_64 release
+#   ./cross-build-bpfman aarch64-unknown-linux-gnu       # ARM64 release
+#   ./cross-build-bpfman powerpc64le-unknown-linux-gnu   # POWER release
+#   ./cross-build-bpfman s390x-unknown-linux-gnu         # IBM Z release
+#   ./cross-build-bpfman aarch64-unknown-linux-gnu ""    # ARM64 debug
+
+set -euo pipefail
+
+TARGET="${1:-aarch64-unknown-linux-gnu}"
+PROFILE="${2:---release}"
+
+export PATH="$HOME/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin:$PATH"
+
+exec cross build --target "$TARGET" $PROFILE
