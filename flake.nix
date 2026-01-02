@@ -100,6 +100,15 @@
           rust-toolchain
           bpfman-go-generate-examples # wrapper for `make -C examples generate`.
           bpfman-dev-qemu  # QEMU development VM
+          # CI linting tools (cross installed via: cargo install cross --git https://github.com/cross-rs/cross)
+          pkgs.cargo-llvm-cov  # code coverage
+          pkgs.taplo  # TOML linter (taplo fmt --check)
+          pkgs.yamllint  # YAML linter
+          pkgs.clang-tools  # clang-format for C code formatting
+          pkgs.golangci-lint  # Go linter
+          # Documentation tools
+          pkgs.uv  # Python package manager for mkdocs
+          pkgs.mkdocs  # documentation generator
         ] ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.pkgsi686Linux.glibc ];
       };
     });
