@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+# bpfman-operator-component-override - Manage bpfman-operator component overrides
+
+set -euo pipefail
+
+: "${CONFIG_NAME:=bpfman-config}"
+
+# Component definitions: name -> "apiVersion|kind|namespace|resourceName"
+declare -A COMPONENTS=(
+    [daemon]="apps/v1|DaemonSet|bpfman|bpfman-daemon"
+    [metrics-proxy]="apps/v1|DaemonSet|bpfman|bpfman-metrics-proxy"
+    [csi]="storage.k8s.io/v1|CSIDriver||csi.bpfman.io"
+    [config]="v1|ConfigMap|bpfman|bpfman-config"
+)
+
+usage() {
+    cat <<EOF
+Usage: bpfman-operator-component-override <command> [component...]
+
+Manage bpfman-operator component overrides.
+
+Commands:
+  add <component>...    Mark components as unmanaged
+  delete <component>... Remove overrides (operator manages again)
+  reset                 Remove all overrides
+  list                  Show current overrides
+
+Components:
+  daemon          bpfman-daemon DaemonSet
+  metrics-proxy   bpfman-metrics-proxy DaemonSet
+  csi             csi.bpfman.io CSIDriver
+  config          bpfman-config ConfigMap
+  ALL             All of the above
+EOF
+    exit "${1:-0}"
+}
+
+list_overrides() {
+    local overrides
+    overrides=$(kubectl get config "${CONFIG_NAME}" -o jsonpath='{.spec.overrides}' 2>/dev/null || echo "")
+
+    if [[ -z "${overrides}" || "${overrides}" == "null" || "${overrides}" == "[]" ]]; then
+        echo "No overrides configured"
+        return 0
+    fi
+
+    echo "Current overrides:"
+    kubectl get config "${CONFIG_NAME}" -o json | \
+        jq -r '.spec.overrides[]? | "  \(.kind)/\(.name) (unmanaged=\(.unmanaged))"'
+}
+
+add_override() {
+    local component="$1"
+    local spec="${COMPONENTS[$component]}"
+
+    IFS='|' read -r api_version kind namespace name <<< "${spec}"
+
+    # Check if override already exists
+    local existing
+    existing=$(kubectl get config "${CONFIG_NAME}" -o json | \
+        jq -r --arg k "${kind}" --arg n "${name}" \
+        '.spec.overrides[]? | select(.kind == $k and .name == $n) | "exists"' 2>/dev/null || echo "")
+
+    if [[ "${existing}" == "exists" ]]; then
+        echo "Already overridden: ${component}"
+        return 0
+    fi
+
+    # Check if overrides array exists
+    local has_overrides
+    has_overrides=$(kubectl get config "${CONFIG_NAME}" -o jsonpath='{.spec.overrides}' 2>/dev/null || echo "")
+
+    if [[ -z "${has_overrides}" || "${has_overrides}" == "null" ]]; then
+        kubectl patch config "${CONFIG_NAME}" --type='merge' -p="$(cat <<EOF
+spec:
+  overrides:
+  - apiVersion: "${api_version}"
+    kind: "${kind}"
+    namespace: "${namespace}"
+    name: "${name}"
+    unmanaged: true
+EOF
+)"
+    else
+        kubectl patch config "${CONFIG_NAME}" --type='json' \
+            -p="[{\"op\": \"add\", \"path\": \"/spec/overrides/-\", \"value\": {\"apiVersion\": \"${api_version}\", \"kind\": \"${kind}\", \"namespace\": \"${namespace}\", \"name\": \"${name}\", \"unmanaged\": true}}]"
+    fi
+
+    echo "Added override: ${component}"
+}
+
+delete_override() {
+    local component="$1"
+    local spec="${COMPONENTS[$component]}"
+
+    IFS='|' read -r api_version kind namespace name <<< "${spec}"
+
+    # Find index of this override
+    local index
+    index=$(kubectl get config "${CONFIG_NAME}" -o json | \
+        jq -r --arg k "${kind}" --arg n "${name}" \
+        '.spec.overrides | to_entries | .[] | select(.value.kind == $k and .value.name == $n) | .key' 2>/dev/null || echo "")
+
+    if [[ -z "${index}" ]]; then
+        echo "Not overridden: ${component}"
+        return 0
+    fi
+
+    kubectl patch config "${CONFIG_NAME}" --type='json' \
+        -p="[{\"op\": \"remove\", \"path\": \"/spec/overrides/${index}\"}]"
+
+    echo "Removed override: ${component}"
+}
+
+reset_overrides() {
+    local has_overrides
+    has_overrides=$(kubectl get config "${CONFIG_NAME}" -o jsonpath='{.spec.overrides}' 2>/dev/null || echo "")
+
+    if [[ -z "${has_overrides}" || "${has_overrides}" == "null" || "${has_overrides}" == "[]" ]]; then
+        echo "No overrides to reset"
+        return 0
+    fi
+
+    kubectl patch config "${CONFIG_NAME}" --type='json' \
+        -p='[{"op": "remove", "path": "/spec/overrides"}]'
+
+    echo "All overrides removed"
+}
+
+expand_components() {
+    local -a result=()
+    for arg in "$@"; do
+        if [[ "${arg}" == "ALL" ]]; then
+            result+=("${!COMPONENTS[@]}")
+        elif [[ -v "COMPONENTS[$arg]" ]]; then
+            result+=("${arg}")
+        else
+            echo "Unknown component: ${arg}" >&2
+            echo "Valid components: ${!COMPONENTS[*]} ALL" >&2
+            exit 1
+        fi
+    done
+    printf '%s\n' "${result[@]}"
+}
+
+[[ $# -eq 0 ]] && usage 1
+
+command="$1"
+shift
+
+case "${command}" in
+    -h|--help|help)
+        usage 0
+        ;;
+    list)
+        if ! kubectl get config "${CONFIG_NAME}" >/dev/null 2>&1; then
+            echo "Error: Config '${CONFIG_NAME}' not found" >&2
+            exit 1
+        fi
+        list_overrides
+        ;;
+    add)
+        [[ $# -eq 0 ]] && { echo "Error: No component specified" >&2; usage 1; }
+        if ! kubectl get config "${CONFIG_NAME}" >/dev/null 2>&1; then
+            echo "Error: Config '${CONFIG_NAME}' not found" >&2
+            exit 1
+        fi
+        while IFS= read -r component; do
+            add_override "${component}"
+        done < <(expand_components "$@")
+        ;;
+    delete)
+        [[ $# -eq 0 ]] && { echo "Error: No component specified" >&2; usage 1; }
+        if ! kubectl get config "${CONFIG_NAME}" >/dev/null 2>&1; then
+            echo "Error: Config '${CONFIG_NAME}' not found" >&2
+            exit 1
+        fi
+        while IFS= read -r component; do
+            delete_override "${component}"
+        done < <(expand_components "$@")
+        ;;
+    reset)
+        if ! kubectl get config "${CONFIG_NAME}" >/dev/null 2>&1; then
+            echo "Error: Config '${CONFIG_NAME}' not found" >&2
+            exit 1
+        fi
+        reset_overrides
+        ;;
+    *)
+        echo "Unknown command: ${command}" >&2
+        echo "Valid commands: add delete reset list" >&2
+        exit 1
+        ;;
+esac

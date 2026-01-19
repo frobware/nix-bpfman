@@ -100,6 +100,7 @@
           rust-toolchain
           bpfman-go-generate-examples # wrapper for `make -C examples generate`.
           bpfman-dev-qemu  # QEMU development VM
+          self.packages.${system}.bpfman-operator-component-override
           # CI linting tools (cross installed via: cargo install cross --git https://github.com/cross-rs/cross)
           pkgs.cargo-llvm-cov  # code coverage
           pkgs.taplo  # TOML linter (taplo fmt --check)
@@ -127,6 +128,13 @@
       pkgs = nixpkgsWithOverlays system;
     in {
       bpfman = pkgs.bpfman;
+      bpfman-operator-component-override = pkgs.writeShellApplication {
+        name = "bpfman-operator-component-override";
+        runtimeInputs = [ pkgs.kubectl pkgs.jq ];
+        text = ''
+          exec -a bpfman-operator-component-override ${./scripts/bpfman-operator-component-override} "$@"
+        '';
+      };
       default = pkgs.bpfman;
     });
   };
