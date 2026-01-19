@@ -89,7 +89,7 @@
           pkgs.go_1_24
           pkgs.libbpf
           pkgs.llvmPackages_latest.lldb  # Provides lldb-vscode
-          pkgs.mold-wrapped
+          pkgs.mold
           pkgs.protobuf_32
           pkgs.protoc-gen-go
           pkgs.protoc-gen-go-grpc
