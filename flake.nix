@@ -62,9 +62,6 @@
         CLANG_VERSION=${pkgs.lib.versions.major pkgs.llvmPackages.clang-unwrapped.version}
         CLANG_INCLUDES="${pkgs.lib.getLib pkgs.llvmPackages.clang-unwrapped}/lib/clang/$CLANG_VERSION/include"
         export C_INCLUDE_PATH="${pkgs.linuxHeaders}/include:${pkgs.libbpf}/include:${pkgs.glibc.dev}/include:$CLANG_INCLUDES"
-        ${pkgs.lib.optionalString (system == "x86_64-linux") ''
-          export C_INCLUDE_PATH="$C_INCLUDE_PATH:${pkgs.pkgsi686Linux.glibc.dev}/include"
-        ''}
         echo "Using clang: $(which clang)"
         make -C examples generate
       '';
@@ -110,7 +107,7 @@
           # Documentation tools
           pkgs.uv  # Python package manager for mkdocs
           pkgs.mkdocs  # documentation generator
-        ] ++ pkgs.lib.optionals (system == "x86_64-linux") [ pkgs.pkgsi686Linux.glibc ];
+        ];
       };
     });
 
