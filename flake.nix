@@ -83,7 +83,6 @@
         packages = [
           pkgs.clang
           pkgs.elfutils
-          pkgs.glibc.static
           pkgs.go_1_24
           pkgs.libbpf
           pkgs.llvmPackages_latest.lldb  # Provides lldb-vscode
