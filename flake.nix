@@ -70,6 +70,58 @@
       bpfman-dev-qemu = pkgs.writeShellScriptBin "bpfman-dev-qemu" ''
         exec ${./scripts/bpfman-dev-qemu.sh} "$@"
       '';
+
+      # Cross-compilation toolchains for nsenter CGO testing.
+      # Nix cross-compiled binaries embed absolute Nix store paths
+      # in PT_INTERP, so QEMU user-mode can load them without -L.
+      crossAarch64 = pkgs.pkgsCross.aarch64-multiplatform;
+      crossPpc64le = pkgs.pkgsCross.powernv;
+      crossS390x   = pkgs.pkgsCross.s390x;
+
+      # Convenience script to run nsenter package tests across
+      # architectures using cross-compilation and QEMU user-mode.
+      #
+      # Usage:
+      #   nsenter-cross-test          # all architectures
+      #   nsenter-cross-test arm64    # single architecture
+      #
+      # Subprocess re-exec tests (TestConstructorWithoutNamespace,
+      # TestConstructorWithSelfNamespace) require binfmt_misc to be
+      # registered for the target architecture so the kernel can
+      # route cross-compiled binaries through QEMU automatically.
+      # Without binfmt_misc those subtests are skipped.
+      nsenter-cross-test = pkgs.writeShellScriptBin "nsenter-cross-test" ''
+        set -euo pipefail
+
+        arch="''${1:-all}"
+
+        run_test() {
+          local label="$1" goarch="$2" cc="$3" qemu_bin="$4"
+          echo "=== nsenter: $label ($goarch) ==="
+          local -a exec_args=()
+          if [ -n "$qemu_bin" ]; then
+            exec_args=(-exec "$qemu_bin")
+          fi
+          CGO_ENABLED=1 GOOS=linux GOARCH="$goarch" CC="$cc" \
+            go test -v -count=1 "''${exec_args[@]}" ./ns/nsenter/
+        }
+
+        if [ "$arch" = "amd64" ] || [ "$arch" = "all" ]; then
+          run_test "native" amd64 gcc ""
+        fi
+        if [ "$arch" = "arm64" ] || [ "$arch" = "all" ]; then
+          run_test "arm64 (QEMU)" arm64 \
+            aarch64-unknown-linux-gnu-gcc qemu-aarch64
+        fi
+        if [ "$arch" = "ppc64le" ] || [ "$arch" = "all" ]; then
+          run_test "ppc64le (QEMU)" ppc64le \
+            powerpc64le-unknown-linux-gnu-gcc qemu-ppc64le
+        fi
+        if [ "$arch" = "s390x" ] || [ "$arch" = "all" ]; then
+          run_test "s390x (QEMU)" s390x \
+            s390x-unknown-linux-gnu-gcc qemu-s390x
+        fi
+      '';
     in {
       default = pkgs.mkShell {
         hardeningDisable = [
@@ -83,6 +135,7 @@
         packages = [
           pkgs.clang
           pkgs.elfutils
+          pkgs.glibc.static  # for static linking of e2e test binaries (call_malloc)
           pkgs.go_1_25
           pkgs.libbpf
           pkgs.llvmPackages_latest.lldb  # Provides lldb-vscode
@@ -92,11 +145,16 @@
           pkgs.protoc-gen-go-grpc
           # QEMU and cloud-init dependencies
           pkgs.qemu_kvm
+          pkgs.qemu-user  # user-mode emulators for cross-arch nsenter testing
           pkgs.cdrkit  # provides genisoimage
           pkgs.virtiofsd
           rust-toolchain
           bpfman-go-generate-examples # wrapper for `make -C examples generate`.
           bpfman-dev-qemu  # QEMU development VM
+          nsenter-cross-test  # cross-arch nsenter CGO test runner
+          crossAarch64.stdenv.cc
+          crossPpc64le.stdenv.cc
+          crossS390x.stdenv.cc
           self.packages.${system}.bpfman-operator-component-override
           # CI linting tools (cross installed via: cargo install cross --git https://github.com/cross-rs/cross)
           pkgs.cargo-llvm-cov  # code coverage
