@@ -135,7 +135,6 @@
         packages = [
           pkgs.clang
           pkgs.elfutils
-          pkgs.glibc.static  # for static linking of e2e test binaries (call_malloc)
           pkgs.go_1_25
           pkgs.libbpf
           pkgs.llvmPackages_latest.lldb  # Provides lldb-vscode
