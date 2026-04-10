@@ -134,7 +134,9 @@
 
         packages = [
           pkgs.clang
+          pkgs.cosign  # image signing (parity with the CI image-build workflow)
           pkgs.elfutils
+          pkgs.glibc.static
           pkgs.go_1_25
           pkgs.libbpf
           pkgs.llvmPackages_latest.lldb  # Provides lldb-vscode
